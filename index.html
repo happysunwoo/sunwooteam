@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Web RPG Quest</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: #0f0f1b;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            width: 900px;
+            background: #1a1a2e;
+            border: 4px solid #4e4e6a;
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(116, 185, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            background: #16213e;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #0f3460;
+        }
+
+        h1 {
+            font-size: 22px;
+            color: #f1c40f;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid #0f3460;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hp-bar-container {
+            width: 100px;
+            height: 12px;
+            background: #444;
+            border-radius: 6px;
+            overflow: hidden;
+            display: inline-block;
+            border: 1px solid #222;
+        }
+
+        .hp-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4757, #ff6b81);
+            width: 100%;
+            transition: width 0.2s;
+        }
+
+        /* Main Game Area */
+        .main-content {
+            display: flex;
+            position: relative;
+        }
+
+        #gameCanvas {
+            background-color: #2d3436;
+            display: block;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+        }
+
+        /* Side Panel */
+        .side-panel {
+            width: 260px;
+            background: #16213e;
+            border-left: 3px solid #0f3460;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel-box {
+            background: #1a1a2e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            color: #00cec9;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #0f3460;
+            padding-bottom: 4px;
+        }
+
+        .controls-list {
+            list-style: none;
+            font-size: 13px;
+            line-height: 1.8;
+            color: #b2bec3;
+        }
+
+        .key {
+            background: #2d3436;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #636e72;
+            color: #fff;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        #logBox {
+            height: 180px;
+            overflow-y: auto;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-right: 5px;
+        }
+
+        #logBox::-webkit-scrollbar {
+            width: 5px;
+        }
+        #logBox::-webkit-scrollbar-thumb {
+            background: #0f3460;
+            border-radius: 3px;
+        }
+
+        .log-entry {
+            line-height: 1.3;
+            animation: fadeIn 0.3s ease-in;
+        }
+        .log-info { color: #74b9ff; }
+        .log-attack { color: #ffeaa7; }
+        .log-kill { color: #55efc4; }
+        .log-damage { color: #ff7675; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(3px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Overlay Messages */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 640px;
+            height: 480px;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
+
+        .overlay h2 {
+            font-size: 32px;
+            color: #ff7675;
+            margin-bottom: 10px;
+        }
+
+        .overlay button {
+            margin-top: 20px;
+            padding: 10px 24px;
+            background: #0984e3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .overlay button:hover {
+            background: #74b9ff;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <!-- Top Bar -->
+        <header>
+            <h1>⚔️ Web Dungeon RPG</h1>
+            <div class="stats-bar">
+                <div class="stat-box">
+                    <span>HP</span>
+                    <div class="hp-bar-container">
+                        <div id="hpFill" class="hp-bar-fill"></div>
+                    </div>
+                    <span id="hpText">100/100</span>
+                </div>
+                <div class="stat-box">
+                    <span>⚔️ ATK: <span id="atkText" style="color: #ff7675;">15</span></span>
+                </div>
+                <div class="stat-box">
+                    <span>🏆 Score: <span id="scoreText" style="color: #f1c40f;">0</span></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Game Area -->
+        <div class="main-content">
+            <canvas id="gameCanvas" width="640" height="480"></canvas>
+
+            <!-- Game Over / Game Start Overlay -->
+            <div id="gameOverOverlay" class="overlay hidden">
+                <h2 id="overlayTitle">GAME OVER</h2>
+                <p id="overlaySub">당신은 용감하게 싸웠지만 전사했습니다...</p>
+                <button onclick="restartGame()">다시 시작하기</button>
+            </div>
+
+            <!-- Side Controls & Log -->
+            <div class="side-panel">
+                <div class="panel-box">
+                    <div class="panel-title">조작 방법</div>
+                    <ul class="controls-list">
+                        <li><span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> : 이동</li>
+                        <li><span class="key">Space</span> : 몬스터 공격</li>
+                    </ul>
+                </div>
+
+                <div class="panel-box" style="flex-grow: 1; display: flex; flex-direction: column;">
+                    <div class="panel-title">모험 기록</div>
+                    <div id="logBox"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI elements
+        const hpFill = document.getElementById('hpFill');
+        const hpText = document.getElementById('hpText');
+        const atkText = document.getElementById('atkText');
+        const scoreText = document.getElementById('scoreText');
+        const logBox = document.getElementById('logBox');
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const overlayTitle = document.getElementById('overlayTitle');
+
+        // Game State
+        let gameOver = false;
+        let score = 0;
+        const keys = {};
+
+        // Player Object
+        const player = {
+            x: 100,
+            y: 100,
+            size: 28,
+            speed: 3.5,
+            hp: 100,
+            maxHp: 100,
+            atk: 15,
+            attackRange: 55,
+            isAttacking: false,
+            attackCooldown: false,
+            direction: 'down' // 'up', 'down', 'left', 'right'
+        };
+
+        // Monsters Array
+        let monsters = [];
+
+        // Particles for visual effects
+        let particles = [];
+
+        // Floating texts (damage numbers)
+        let floatingTexts = [];
+
+        // Key Listeners
+        window.addEventListener('keydown', (e) => {
+            const code = e.code;
+            if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'].includes(code)) {
+                keys[code] = true;
+                if (code === 'Space' && !player.attackCooldown && !gameOver) {
+                    performAttack();
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'].includes(e.code)) {
+                keys[e.code] = false;
+            }
+        });
+
+        function addLog(msg, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerText = msg;
+            logBox.appendChild(entry);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // Spawn Monsters
+        function spawnMonster() {
+            if (monsters.length >= 6 || gameOver) return;
+
+            // Spawn at canvas border away from player
+            let mx, my;
+            if (Math.random() < 0.5) {
+                mx = Math.random() < 0.5 ? 20 : canvas.width - 40;
+                my = Math.random() * (canvas.height - 60) + 20;
+            } else {
+                mx = Math.random() * (canvas.width - 60) + 20;
+                my = Math.random() < 0.5 ? 20 : canvas.height - 40;
+            }
+
+            const types = [
+                { name: '슬라임', color: '#2ecc71', hp: 30, maxHp: 30, atk: 8, speed: 1.2, score: 10, size: 24 },
+                { name: '고블린', color: '#e67e22', hp: 50, maxHp: 50, atk: 12, speed: 1.6, score: 25, size: 26 },
+                { name: '스켈레톤', color: '#95a5a6', hp: 80, maxHp: 80, atk: 18, speed: 1.0, score: 40, size: 28 }
+            ];
+
+            const type = types[Math.floor(Math.random() * types.length)];
+
+            monsters.push({
+                x: mx,
+                y: my,
+                ...type,
+                lastAttack: 0,
+                attackInterval: 1200 // ms
+            });
+        }
+
+        // Periodically spawn monsters
+        setInterval(spawnMonster, 2500);
+
+        function createHitParticles(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    life: 20,
+                    color: color
+                });
+            }
+        }
+
+        function createFloatingText(x, y, text, color) {
+            floatingTexts.push({
+                x: x,
+                y: y,
+                text: text,
+                color: color,
+                life: 30,
+                opacity: 1
+            });
+        }
+
+        function performAttack() {
+            player.isAttacking = true;
+            player.attackCooldown = true;
+
+            setTimeout(() => { player.isAttacking = false; }, 200);
+            setTimeout(() => { player.attackCooldown = false; }, 400);
+
+            let hitAny = false;
+
+            monsters.forEach((m, index) => {
+                const dist = Math.hypot((player.x + player.size/2) - (m.x + m.size/2), (player.y + player.size/2) - (m.y + m.size/2));
+                if (dist <= player.attackRange) {
+                    // Deal damage
+                    const damage = player.atk + Math.floor(Math.random() * 5);
+                    m.hp -= damage;
+                    hitAny = true;
+
+                    createHitParticles(m.x + m.size/2, m.y + m.size/2, m.color);
+                    createFloatingText(m.x + m.size/2, m.y - 10, `-${damage}`, '#ff7675');
+
+                    // Knockback monster
+                    const angle = Math.atan2((m.y - player.y), (m.x - player.x));
+                    m.x += Math.cos(angle) * 20;
+                    m.y += Math.sin(angle) * 20;
+
+                    // Keep inside screen
+                    m.x = Math.max(10, Math.min(canvas.width - m.size - 10, m.x));
+                    m.y = Math.max(10, Math.min(canvas.height - m.size - 10, m.y));
+
+                    if (m.hp <= 0) {
+                        score += m.score;
+                        scoreText.innerText = score;
+                        addLog(`${m.name} 처치! (+${m.score}점)`, 'kill');
+                        monsters.splice(index, 1);
+                    } else {
+                        addLog(`${m.name}에게 ${damage} 대미지!`, 'attack');
+                    }
+                }
+            });
+
+            if (!hitAny) {
+                // Swing in air particle effect
+                const px = player.x + player.size/2;
+                const py = player.y + player.size/2;
+                createHitParticles(px, py, '#ffffff');
+            }
+        }
+
+        function updatePlayer() {
+            if (gameOver) return;
+
+            let dx = 0;
+            let dy = 0;
+
+            if (keys['KeyW']) { dy -= player.speed; player.direction = 'up'; }
+            if (keys['KeyS']) { dy += player.speed; player.direction = 'down'; }
+            if (keys['KeyA']) { dx -= player.speed; player.direction = 'left'; }
+            if (keys['KeyD']) { dx += player.speed; player.direction = 'right'; }
+
+            // Diagonal speed normalization
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.7071;
+                dy *= 0.7071;
+            }
+
+            player.x += dx;
+            player.y += dy;
+
+            // Boundaries
+            player.x = Math.max(10, Math.min(canvas.width - player.size - 10, player.x));
+            player.y = Math.max(10, Math.min(canvas.height - player.size - 10, player.y));
+        }
+
+        function updateMonsters() {
+            if (gameOver) return;
+
+            const now = Date.now();
+
+            monsters.forEach(m => {
+                // Move towards player
+                const dx = (player.x + player.size/2) - (m.x + m.size/2);
+                const dy = (player.y + player.size/2) - (m.y + m.size/2);
+                const dist = Math.hypot(dx, dy);
+
+                if (dist > 25) {
+                    m.x += (dx / dist) * m.speed;
+                    m.y += (dy / dist) * m.speed;
+                }
+
+                // Attack Player on contact
+                if (dist < 30 && (now - m.lastAttack > m.attackInterval)) {
+                    m.lastAttack = now;
+                    player.hp -= m.atk;
+                    createHitParticles(player.x + player.size/2, player.y + player.size/2, '#ff4757');
+                    createFloatingText(player.x + player.size/2, player.y - 10, `-${m.atk}`, '#ff4757');
+                    addLog(`${m.name}에게 ${m.atk} 피격!`, 'damage');
+
+                    updateUI();
+
+                    if (player.hp <= 0) {
+                        player.hp = 0;
+                        updateUI();
+                        triggerGameOver();
+                    }
+                }
+            });
+        }
+
+        function updateUI() {
+            const hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
+            hpFill.style.width = hpPct + '%';
+            hpText.innerText = `${player.hp}/${player.maxHp}`;
+        }
+
+        function triggerGameOver() {
+            gameOver = true;
+            overlayTitle.innerText = "GAME OVER";
+            gameOverOverlay.classList.remove('hidden');
+        }
+
+        function restartGame() {
+            player.hp = 100;
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            score = 0;
+            scoreText.innerText = score;
+            monsters = [];
+            particles = [];
+            floatingTexts = [];
+            gameOver = false;
+            updateUI();
+            gameOverOverlay.classList.add('hidden');
+            logBox.innerHTML = '';
+            addLog("던전에 다시 입장했습니다! 무운을 빕니다.", "info");
+        }
+
+        // Draw Loop
+        function render() {
+            // Background grid
+            ctx.fillStyle = '#22252a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#2d3238';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Draw Attack Range Indicator when attacking
+            if (player.isAttacking) {
+                ctx.beginPath();
+                ctx.arc(player.x + player.size/2, player.y + player.size/2, player.attackRange, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 234, 167, 0.25)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(253, 203, 110, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Draw Monsters
+            monsters.forEach(m => {
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(m.x + m.size/2, m.y + m.size - 2, m.size/2, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Body
+                ctx.fillStyle = m.color;
+                ctx.fillRect(m.x, m.y, m.size, m.size);
+
+                // Monster HP Bar
+                const hpWidth = m.size;
+                const hpPct = m.hp / m.maxHp;
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(m.x, m.y - 8, hpWidth, 4);
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(m.x, m.y - 8, hpWidth * hpPct, 4);
+
+                // Eyes
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(m.x + 4, m.y + 6, 4, 4);
+                ctx.fillRect(m.x + m.size - 8, m.y + 6, 4, 4);
+            });
+
+            // Draw Player
+            if (!gameOver) {
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.beginPath();
+                ctx.ellipse(player.x + player.size/2, player.y + player.size - 2, player.size/2, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Player Body
+                ctx.fillStyle = '#0984e3';
+                ctx.fillRect(player.x, player.y, player.size, player.size);
+
+                // Sword / Direction indicator
+                ctx.fillStyle = '#dfe6e9';
+                const px = player.x + player.size/2;
+                const py = player.y + player.size/2;
+                if (player.direction === 'right') ctx.fillRect(px, py - 3, 20, 6);
+                else if (player.direction === 'left') ctx.fillRect(px - 20, py - 3, 20, 6);
+                else if (player.direction === 'up') ctx.fillRect(px - 3, py - 20, 6, 20);
+                else if (player.direction === 'down') ctx.fillRect(px - 3, py, 6, 20);
+
+                // Player Eyes
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(player.x + 6, player.y + 6, 5, 5);
+                ctx.fillRect(player.x + player.size - 11, player.y + 6, 5, 5);
+            }
+
+            // Draw Particles
+            particles.forEach((p, index) => {
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, 4, 4);
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) particles.splice(index, 1);
+            });
+
+            // Draw Floating Texts
+            floatingTexts.forEach((ft, index) => {
+                ctx.fillStyle = ft.color;
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ft.y -= 0.8;
+                ft.life--;
+                if (ft.life <= 0) floatingTexts.splice(index, 1);
+            });
+        }
+
+        function gameLoop() {
+            updatePlayer();
+            updateMonsters();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize Log
+        addLog("게임에 접속했습니다. WASD로 이동하고 Space로 공격하세요!", "info");
+        
+        // Start Game
+        gameLoop();
+    </script>
+</body>
+</html>
+rpg_game.html
+rpg_game.html 항목을 표시하는 중입니다.
